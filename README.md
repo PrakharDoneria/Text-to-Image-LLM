@@ -10,4 +10,4 @@ This Telegram bot allows you to generate response images based on prompts you pr
 
 ## Donate
 
-If you find this bot helpful and would like to support its development, you can donate [here](#).
+If you find this bot helpful and would like to support its development, you can donate [here](https://html-editor-pro.vercel.app/donations/).

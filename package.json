@@ -5,6 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "start": "node index.js",
+    "build": "echo 'No build step needed for this Node.js application.'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

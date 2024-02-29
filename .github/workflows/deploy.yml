@@ -1,0 +1,18 @@
+name: Deploy to Render
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to Render
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_DEPLOY_KEY }}
+        run: curl -X POST "https://api.render.com/deploy/srv-cnfk2q0l5elc7394pfqg?key=${RENDER_API_KEY}"

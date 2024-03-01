@@ -2,7 +2,7 @@ name: Deploy to Render
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/45 * * * *"
 
 jobs:
   deploy:

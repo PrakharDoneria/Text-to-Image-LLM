@@ -186,6 +186,9 @@ bot.command('imagine', async (ctx) => {
 
         await ctx.telegram.deleteMessage(ctx.chat.id, message.message_id);
         await saveImageCount(username);
+
+        // Adding caption after sending the image
+        await ctx.reply("Download Android app:  https://galaxy.store/llm ");
     } catch (error) {
         handleError(error);
         const errorMessage = `An error occurred while processing your request:\n\`\`\`javascript\n${error}\n\`\`\``;

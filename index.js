@@ -112,7 +112,7 @@ async function getProLLMResponse(prompt) {
             body: JSON.stringify(data)
         });
         const json = await response.json();
-        const imageUrl = `https://storage.googleapis.com/pai-images/${json.images[0].imageKey}.jpeg`;
+        const imageUrl = `https://images.playground.com/${json.images[0].imageKey}.jpeg`;
         const imageResponse = await fetch(imageUrl);
         const buffer = Buffer.from(await imageResponse.arrayBuffer());
 

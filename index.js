@@ -47,34 +47,21 @@ const Image = mongoose.model('Image', imageSchema);
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 const app = express();
 
-try {
-    app.get('/', (req, res) => {
-        res.send('Jinda hu');
-    });
-} catch (error) {
-    handleError(error);
-}
+app.get('/', (req, res) => {
+    res.send('Jinda hu');
+});
 
 app.use((err, req, res, next) => {
-    try {
-        console.error(err.stack);
-        res.status(500).send('Something went wrong!');
-    } catch (error) {
-        handleError(error);
-    }
+    console.error(err.stack);
+    res.status(500).send('Something went wrong!');
 });
 
 async function asyncMiddleware(fn) {
     return (req, res, next) => {
-        try {
-            Promise.resolve(fn(req, res, next)).catch((error) => {
-                handleError(error);
-                next(error);
-            });
-        } catch (error) {
+        Promise.resolve(fn(req, res, next)).catch((error) => {
             handleError(error);
             next(error);
-        }
+        });
     };
 }
 
@@ -159,10 +146,25 @@ bot.on('message', async (ctx) => {
     try {
         if (ctx.message.text === 'message_deleted') {
             // Resend the message
-            await ctx.reply("Download Android app: https://galaxy.store/llm 
+            await ctx.reply(`Download Android app: https://galaxy.store/llm
                             OR
-                https://verbovisions-free-ai-image-maker.en.uptodown.com/androd 
-                            Try the web version: https://verbo-visions-web.vercel.app/");
+                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
+                            Try the web version: https://verbo-visions-web.vercel.app/`);
+        }
+    } catch (error) {
+        handleError(error);
+    }
+});
+
+bot.on('message_delete', async (ctx) => {
+    try {
+        const deletedMessage = ctx.update.message;
+        if (deletedMessage && deletedMessage.text === 'message_deleted') {
+            // Resend the message
+            await ctx.reply(`Download Android app: https://galaxy.store/llm
+                            OR
+                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
+                            Try the web version: https://verbo-visions-web.vercel.app/`);
         }
     } catch (error) {
         handleError(error);
@@ -202,10 +204,10 @@ bot.command('imagine', async (ctx) => {
         await saveImageCount(username);
 
         // Adding caption after sending the image
-        await ctx.reply("Download Android app: https://galaxy.store/llm 
+        await ctx.reply(`Download Android app: https://galaxy.store/llm
                             OR
-                https://verbovisions-free-ai-image-maker.en.uptodown.com/androd 
-                            Try the web version: https://verbo-visions-web.vercel.app/");
+                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
+                            Try the web version: https://verbo-visions-web.vercel.app/`);
     } catch (error) {
         handleError(error);
         const errorMessage = `An error occurred while processing your request:\n\`\`\`javascript\n${error}\n\`\`\``;
@@ -256,15 +258,6 @@ bot.command('id', (ctx) => {
         } else {
             ctx.reply('You do not have a username set.');
         }
-    } catch (error) {
-        handleError(error);
-    }
-});
-
-app.use((err, req, res, next) => {
-    try {
-        handleError(err);
-        res.status(500).send('Something went wrong!');
     } catch (error) {
         handleError(error);
     }

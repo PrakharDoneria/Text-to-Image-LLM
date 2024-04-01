@@ -169,16 +169,10 @@ bot.command('imagine', async (ctx) => {
         const imageFilePath = await getProLLMResponse(prompt);
         await ctx.telegram.sendChatAction(ctx.chat.id, 'upload_photo');
 
-        await ctx.replyWithPhoto({ source: await fsPromises.readFile(imageFilePath) });
+        await ctx.replyWithPhoto({ source: await fsPromises.readFile(imageFilePath), caption: `Download Android app: https://galaxy.store/llm\nOR\nhttps://verbovisions-free-ai-image-maker.en.uptodown.com/android\nTry the web version: https://verbo-visions-web.vercel.app/` });
 
         await ctx.telegram.deleteMessage(ctx.chat.id, message.message_id);
         await saveImageCount(username);
-
-        // Adding caption after sending the image
-        await ctx.reply(`Download Android app: https://galaxy.store/llm
-                            OR
-                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
-                            Try the web version: https://verbo-visions-web.vercel.app/`);
     } catch (error) {
         handleError(error);
         const errorMessage = `An error occurred while processing your request:\n\`\`\`javascript\n${error}\n\`\`\``;
@@ -238,10 +232,7 @@ bot.on('message', async (ctx) => {
     try {
         if (ctx.message.text === 'message_deleted') {
             // Resend the message
-            await ctx.reply(`Download Android app: https://galaxy.store/llm
-                            OR
-                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
-                            Try the web version: https://verbo-visions-web.vercel.app/`);
+            await ctx.reply(`Download Android app: https://galaxy.store/llm\nOR\nhttps://verbovisions-free-ai-image-maker.en.uptodown.com/android\nTry the web version: https://verbo-visions-web.vercel.app/`);
         }
     } catch (error) {
         handleError(error);
@@ -253,10 +244,7 @@ bot.on('message_delete', async (ctx) => {
         const deletedMessage = ctx.update.message;
         if (deletedMessage && deletedMessage.text === 'message_deleted') {
             // Resend the message
-            await ctx.reply(`Download Android app: https://galaxy.store/llm
-                            OR
-                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
-                            Try the web version: https://verbo-visions-web.vercel.app/`);
+            await ctx.reply(`Download Android app: https://galaxy.store/llm\nOR\nhttps://verbovisions-free-ai-image-maker.en.uptodown.com/android\nTry the web version: https://verbo-visions-web.vercel.app/`);
         }
     } catch (error) {
         handleError(error);

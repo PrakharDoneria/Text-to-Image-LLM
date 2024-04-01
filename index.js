@@ -169,13 +169,16 @@ bot.command('imagine', async (ctx) => {
         const imageFilePath = await getProLLMResponse(prompt);
         await ctx.telegram.sendChatAction(ctx.chat.id, 'upload_photo');
 
-        await ctx.replyWithPhoto({ source: await fsPromises.readFile(imageFilePath) });
+        // Adding caption after sending the image
+        await ctx.replyWithPhoto({ source: await fsPromises.readFile(imageFilePath) }, {
+            caption: "Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\tWebsite : https://verbo-visions-web.vercel.app/"
+        });
 
         await ctx.telegram.deleteMessage(ctx.chat.id, message.message_id);
         await saveImageCount(username);
 
         // Adding caption after sending the image
-        await ctx.reply(`Download Android app:\n\t[Galaxy Store](https://galaxy.store/llm)\n\tOR\n\t[Uptodown](https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\t[Vercel](https://verbo-visions-web.vercel.app/)`);
+        await ctx.reply(`Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\tWebsite : https://verbo-visions-web.vercel.app/`);
     } catch (error) {
         handleError(error);
         const errorMessage = `An error occurred while processing your request:\n\`\`\`javascript\n${error}\n\`\`\``;

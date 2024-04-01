@@ -155,6 +155,20 @@ async function saveImageCount(username) {
     }
 }
 
+bot.on('message', async (ctx) => {
+    try {
+        if (ctx.message.text === 'message_deleted') {
+            // Resend the message
+            await ctx.reply("Download Android app: https://galaxy.store/llm 
+                            OR
+                https://verbovisions-free-ai-image-maker.en.uptodown.com/androd 
+                            Try the web version: https://verbo-visions-web.vercel.app/");
+        }
+    } catch (error) {
+        handleError(error);
+    }
+});
+
 bot.command('imagine', async (ctx) => {
     try {
         const prompt = ctx.message.text.replace('/imagine', '').trim();
@@ -188,7 +202,10 @@ bot.command('imagine', async (ctx) => {
         await saveImageCount(username);
 
         // Adding caption after sending the image
-        await ctx.reply("Download Android app: https://galaxy.store/llm ");
+        await ctx.reply("Download Android app: https://galaxy.store/llm 
+                            OR
+                https://verbovisions-free-ai-image-maker.en.uptodown.com/androd 
+                            Try the web version: https://verbo-visions-web.vercel.app/");
     } catch (error) {
         handleError(error);
         const errorMessage = `An error occurred while processing your request:\n\`\`\`javascript\n${error}\n\`\`\``;

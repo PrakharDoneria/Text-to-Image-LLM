@@ -56,6 +56,15 @@ app.use((err, req, res, next) => {
     res.status(500).send('Something went wrong!');
 });
 
+async function asyncMiddleware(fn) {
+    return (req, res, next) => {
+        Promise.resolve(fn(req, res, next)).catch((error) => {
+            handleError(error);
+            next(error);
+        });
+    };
+}
+
 async function getProLLMResponse(prompt) {
     try {
         const seedBytes = randomBytes(4);
@@ -103,6 +112,36 @@ async function getProLLMResponse(prompt) {
     }
 }
 
+async function checkUsernameInDatabase(username) {
+    try {
+        const user = await Username.findOne({ username });
+        return !!user;
+    } catch (error) {
+        handleError(error);
+        return false;
+    }
+}
+
+async function getImageCount(username) {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const image = await Image.findOne({ username, date: today });
+        return image ? { count: image.count, expireAt: image.expireAt } : { count: 0, expireAt: null };
+    } catch (error) {
+        handleError(error);
+        return { count: 0, expireAt: null };
+    }
+}
+
+async function saveImageCount(username) {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        await Image.findOneAndUpdate({ username, date: today }, { $inc: { count: 1 } }, { upsert: true });
+    } catch (error) {
+        handleError(error);
+    }
+}
+
 bot.command('imagine', async (ctx) => {
     try {
         const prompt = ctx.message.text.replace('/imagine', '').trim();
@@ -120,7 +159,7 @@ bot.command('imagine', async (ctx) => {
         const isUsernameInDatabase = await checkUsernameInDatabase(username);
         const { count, expireAt } = await getImageCount(username);
         if (!isUsernameInDatabase && count >= 3 && new Date(expireAt) > new Date()) {
-            const remainingTime = Math.ceil((new Date(expireAt) - new Date()) / (1000 * 60 * 60)); 
+            const remainingTime = Math.ceil((new Date(expireAt) - new Date()) / (1000 * 60 * 60)); // Convert milliseconds to hours
             ctx.reply(`You have reached the limit of 3 images per day. Please try again after ${remainingTime} hours, Or send /donate to continue using the Bot.`);
             return;
         }
@@ -130,12 +169,16 @@ bot.command('imagine', async (ctx) => {
         const imageFilePath = await getProLLMResponse(prompt);
         await ctx.telegram.sendChatAction(ctx.chat.id, 'upload_photo');
 
+        // Adding caption after sending the image
         await ctx.replyWithPhoto({ source: await fsPromises.readFile(imageFilePath) }, {
             caption: "Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\tWebsite : https://verbo-visions-web.vercel.app/"
         });
 
         await ctx.telegram.deleteMessage(ctx.chat.id, message.message_id);
         await saveImageCount(username);
+
+        // Adding caption after sending the image
+        //await ctx.reply(`Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\tWebsite : https://verbo-visions-web.vercel.app/`);
     } catch (error) {
         handleError(error);
         const errorMessage = `An error occurred while processing your request:\n\`\`\`javascript\n${error}\n\`\`\``;
@@ -194,6 +237,7 @@ bot.command('id', (ctx) => {
 bot.on('message', async (ctx) => {
     try {
         if (ctx.message.text === 'message_deleted') {
+            // Resend the message
             await ctx.reply(`Download Android app: https://galaxy.store/llm
                             OR
                             https://verbovisions-free-ai-image-maker.en.uptodown.com/android
@@ -208,6 +252,7 @@ bot.on('message_delete', async (ctx) => {
     try {
         const deletedMessage = ctx.update.message;
         if (deletedMessage && deletedMessage.text === 'message_deleted') {
+            // Resend the message
             await ctx.reply(`Download Android app: https://galaxy.store/llm
                             OR
                             https://verbovisions-free-ai-image-maker.en.uptodown.com/android
@@ -217,6 +262,7 @@ bot.on('message_delete', async (ctx) => {
         handleError(error);
     }
 });
+
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {

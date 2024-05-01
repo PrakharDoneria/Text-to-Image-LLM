@@ -321,6 +321,12 @@ app.listen(port, () => {
 try {
     bot.launch();
 } catch (error) {
-    console.error(error);
-    handleError(error);
+    if (error.description && error.description.includes('Forbidden: bot was blocked by the user')) {
+        
+        console.log('Bot was blocked by the user. Ignoring.');
+    } else {
+        // Handle other errors
+        console.error(error);
+        handleError(error);
+    }
 }

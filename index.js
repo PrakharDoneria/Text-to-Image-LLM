@@ -142,6 +142,55 @@ async function saveImageCount(username) {
     }
 }
 
+bot.command('myData', async (ctx) => {
+    try {
+        const username = ctx.from.username; // Get the username of the user who sent the command
+        if (!username) {
+            ctx.reply('You need to set a username to use this command.');
+            return;
+        }
+
+        const { count, expireAt } = await getImageCount(username); // Get image count and expiration time for the current user
+        const lastImageTime = expireAt ? expireAt.toLocaleTimeString() : 'N/A';
+
+        // Format user data
+        const userData = `================\nUsername: ${username}\nTotal images (today): ${count}\nLast image: ${lastImageTime}\n================\n`;
+
+        // Reply with the formatted user data
+        await ctx.reply(userData);
+    } catch (error) {
+        handleError(error);
+        ctx.reply('An error occurred while fetching your data.');
+    }
+});
+
+
+bot.command('showDB', async (ctx) => {
+    try {
+        const users = await Username.find({}); // Fetch all users
+        let replyMessage = ''; // Initialize the reply message
+
+        // Iterate through each user
+        for (const user of users) {
+            const { username } = user;
+            const { count, expireAt } = await getImageCount(username); // Get image count and expiration time
+            const lastImageTime = expireAt ? expireAt.toLocaleTimeString() : 'N/A';
+
+            // Format user data
+            const userData = `================\nUsername: ${username}\nTotal images (today): ${count}\nLast image: ${lastImageTime}\n================\n`;
+
+            replyMessage += userData; // Append user data to the reply message
+        }
+
+        // Reply with the formatted user data as a single message
+        await ctx.reply(replyMessage);
+    } catch (error) {
+        handleError(error);
+        ctx.reply('An error occurred while fetching user data.');
+    }
+});
+
+
 bot.command('imagine', async (ctx) => {
     try {
         const prompt = ctx.message.text.replace('/imagine', '').trim();

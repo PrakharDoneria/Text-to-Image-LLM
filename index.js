@@ -312,6 +312,26 @@ bot.on('message_delete', async (ctx) => {
     }
 });
 
+bot.on('inlineQuery', async (ctx) => {
+    try {
+        const prompt = ctx.inlineQuery.query.trim();
+        if (!prompt) {
+            return;
+        }
+
+        const imageFilePath = await getProLLMResponse(prompt);
+        const caption = "Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\tWebsite : https://verbo-visions-web.vercel.app/";
+
+        // Respond with the generated image
+        await ctx.telegram.sendPhoto(ctx.inlineQuery.from.id, { source: await fsPromises.readFile(imageFilePath) }, {
+            caption: caption,
+            reply_markup: { inline_keyboard: [[{ text: "Download Android app", url: "https://galaxy.store/llm" }], [{ text: "Uptodown", url: "https://verbovisions-free-ai-image-maker.en.uptodown.com/android" }], [{ text: "Website", url: "https://verbo-visions-web.vercel.app/" }]] }
+        });
+    } catch (error) {
+        handleError(error);
+    }
+});
+
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {

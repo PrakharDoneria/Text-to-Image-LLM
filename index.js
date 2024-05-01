@@ -170,6 +170,11 @@ bot.command('showDB', async (ctx) => {
         const users = await Username.find({}); // Fetch all users
         let replyMessage = ''; // Initialize the reply message
 
+        if (users.length === 0) {
+            ctx.reply('No users found.');
+            return;
+        }
+
         // Iterate through each user
         for (const user of users) {
             const { username } = user;

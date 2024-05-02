@@ -10,9 +10,6 @@ import { randomBytes } from 'crypto';
 import { client } from "@gradio/client";
 import axios from 'axios';
 import FormData from 'form-data';
-import { config } from 'dotenv';
-
-
 
 dotenv.config();
 
@@ -54,7 +51,7 @@ const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 const app = express();
 
 app.get('/', (req, res) => {
-    res.send('Jinda hu');
+    res.send('Server is up and running!');
 });
 
 app.use((err, req, res, next) => {
@@ -71,82 +68,70 @@ async function asyncMiddleware(fn) {
     };
 }
 
-async function getProLLMResponse(prompt) {
+async function query(data) {
     try {
-        const seedBytes = randomBytes(4);
-        const seed = seedBytes.readUInt32BE();
-        const data = {
-            width: 1024,
-            height: 1024,
-            seed: seed,
-            num_images: 1,
-            modelType: process.env.MODEL_TYPE,
-            sampler: 9,
-            cfg_scale: 3,
-            guidance_scale: 3,
-            strength: 1.7,
-            steps: 30,
-            high_noise_frac: 1,
-            negativePrompt: 'ugly, deformed, noisy, blurry, distorted, out of focus, bad anatomy, extra limbs, poorly drawn face, poorly drawn hands, missing fingers',
-            prompt: prompt,
-            hide: false,
-            isPrivate: false,
-            batchId: '0yU1CQbVkr',
-            generateVariants: false,
-            initImageFromPlayground: false,
-            statusUUID: '8c057d08-00f7-4ad6-903e-e10a2bb81d07'
-        };
-        const response = await fetch(process.env.BACKEND_URL, {
-            method: 'POST',
+        const response = await fetch(
+            "https://api-inference.huggingface.co/models/cagliostrolab/animagine-xl-3.1",
+            {
+                headers: { Authorization: `Bearer ${process.env.HUGGING_FACE_API_KEY}`, "Content-Type": "application/json" },
+                method: "POST",
+                body: JSON.stringify(data),
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch data from Hugging Face API: ${response.status} - ${response.statusText}`);
+        }
+
+        const result = await response.blob();
+        return result;
+    } catch (error) {
+        throw new Error(`Error fetching data from Hugging Face API: ${error.message}`);
+    }
+}
+
+async function uploadToImgBB(imageBlob) {
+    try {
+        const formData = new FormData();
+        formData.append('image', imageBlob, 'image.jpg');
+        formData.append('expiration', 'never');
+
+        const response = await axios.post('https://api.imgbb.com/1/upload', formData, {
             headers: {
-                'Content-Type': 'application/json',
-                'Cookie': process.env.COOKIES
+                'Content-Type': 'multipart/form-data'
             },
-            body: JSON.stringify(data)
+            params: {
+                key: process.env.IMGBB_API_KEY
+            }
         });
-        const json = await response.json();
-        const imageUrl = `https://images.playground.com/${json.images[0].imageKey}.jpeg`;
-        const imageResponse = await fetch(imageUrl);
-        const buffer = Buffer.from(await imageResponse.arrayBuffer());
 
-        const tempFilePath = join(tmpdir(), `${Date.now()}.jpeg`);
-        await fsPromises.writeFile(tempFilePath, buffer);
-        return tempFilePath;
+        if (!response.data || !response.data.data || !response.data.data.url) {
+            throw new Error("Failed to upload image to imgBB.");
+        }
+
+        return response.data.data.url;
     } catch (error) {
-        handleError(error);
-        throw error;
+        throw new Error(`Error uploading image to imgBB: ${error.message}`);
     }
 }
 
-async function checkUsernameInDatabase(username) {
+bot.command('anime', async (ctx) => {
     try {
-        const user = await Username.findOne({ username });
-        return !!user;
-    } catch (error) {
-        handleError(error);
-        return false;
-    }
-}
+        const prompt = ctx.message.text.split(' ').slice(1).join(' ');
+        if (!prompt) {
+            ctx.reply('Please provide a prompt.');
+            return;
+        }
 
-async function getImageCount(username) {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        const image = await Image.findOne({ username, date: today });
-        return image ? { count: image.count, expireAt: image.expireAt } : { count: 0, expireAt: null };
-    } catch (error) {
-        handleError(error);
-        return { count: 0, expireAt: null };
-    }
-}
+        const imageBlob = await query({ prompt });
+        const imageUrl = await uploadToImgBB(imageBlob);
 
-async function saveImageCount(username) {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        await Image.findOneAndUpdate({ username, date: today }, { $inc: { count: 1 } }, { upsert: true });
+        await ctx.replyWithPhoto({ url: imageUrl });
     } catch (error) {
-        handleError(error);
+        console.error("Error:", error.message);
+        ctx.reply('Internal Server Error');
     }
-}
+});
 
 bot.command('myData', async (ctx) => {
     try {
@@ -328,79 +313,6 @@ bot.command('video', async (ctx) => {
         ctx.reply(errorMessage);
     }
 });
-
-
-config();
-
-const HUGGING_FACE_API_KEY = process.env.HUGGING_FACE_API_KEY;
-const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
-
-async function query(data) {
-    try {
-        const response = await fetch(
-            "https://api-inference.huggingface.co/models/cagliostrolab/animagine-xl-3.1",
-            {
-                headers: { Authorization: `Bearer ${HUGGING_FACE_API_KEY}`, "Content-Type": "application/json" },
-                method: "POST",
-                body: JSON.stringify(data),
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch data from Hugging Face API: ${response.status} - ${response.statusText}`);
-        }
-
-        const result = await response.blob();
-        return result;
-    } catch (error) {
-        throw new Error(`Error fetching data from Hugging Face API: ${error.message}`);
-    }
-}
-
-async function uploadToImgBB(imageBlob) {
-    try {
-        const formData = new FormData();
-        formData.append('image', imageBlob, 'image.jpg');
-        formData.append('expiration', 'never');
-
-        const response = await axios.post('https://api.imgbb.com/1/upload', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            },
-            params: {
-                key: IMGBB_API_KEY
-            }
-        });
-
-        if (!response.data || !response.data.data || !response.data.data.url) {
-            throw new Error("Failed to upload image to imgBB.");
-        }
-
-        return response.data.data.url;
-    } catch (error) {
-        throw new Error(`Error uploading image to imgBB: ${error.message}`);
-    }
-}
-
-bot.command('anime', async (ctx) => {
-    try {
-        const prompt = ctx.message.text.split(' ').slice(1).join(' ');
-        if (!prompt) {
-            ctx.reply('Please provide a prompt.');
-            return;
-        }
-
-        const imageBlob = await query({ prompt });
-        const imageUrl = await uploadToImgBB(imageBlob);
-
-        await ctx.replyWithPhoto({ url: imageUrl });
-    } catch (error) {
-        console.error("Error:", error.message);
-        ctx.reply('Internal Server Error');
-    }
-});
-
-bot.launch();
 
 bot.command('version', async (ctx) => {
     try {

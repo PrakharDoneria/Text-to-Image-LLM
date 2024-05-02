@@ -392,6 +392,15 @@ bot.command('anime', async (ctx) => {
     }
 });
 
+bot.command('version', async (ctx) => {
+    try {
+        await ctx.reply('v2 Alpha');
+    } catch (error) {
+        console.error("Error:", error.message);
+        ctx.reply('Internal Server Error');
+    }
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

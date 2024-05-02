@@ -8,6 +8,11 @@ import mongoose from 'mongoose';
 import express from 'express';
 import { randomBytes } from 'crypto';
 import { client } from "@gradio/client";
+import axios from 'axios';
+import FormData from 'form-data';
+import { config } from 'dotenv';
+
+
 
 dotenv.config();
 
@@ -324,46 +329,78 @@ bot.command('video', async (ctx) => {
     }
 });
 
+
+config();
+
+const HUGGING_FACE_API_KEY = process.env.HUGGING_FACE_API_KEY;
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
+
+async function query(data) {
+    try {
+        const response = await fetch(
+            "https://api-inference.huggingface.co/models/cagliostrolab/animagine-xl-3.1",
+            {
+                headers: { Authorization: `Bearer ${HUGGING_FACE_API_KEY}`, "Content-Type": "application/json" },
+                method: "POST",
+                body: JSON.stringify(data),
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch data from Hugging Face API: ${response.status} - ${response.statusText}`);
+        }
+
+        const result = await response.blob();
+        return result;
+    } catch (error) {
+        throw new Error(`Error fetching data from Hugging Face API: ${error.message}`);
+    }
+}
+
+async function uploadToImgBB(imageBlob) {
+    try {
+        const formData = new FormData();
+        formData.append('image', imageBlob, 'image.jpg');
+        formData.append('expiration', 'never');
+
+        const response = await axios.post('https://api.imgbb.com/1/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            },
+            params: {
+                key: IMGBB_API_KEY
+            }
+        });
+
+        if (!response.data || !response.data.data || !response.data.data.url) {
+            throw new Error("Failed to upload image to imgBB.");
+        }
+
+        return response.data.data.url;
+    } catch (error) {
+        throw new Error(`Error uploading image to imgBB: ${error.message}`);
+    }
+}
+
 bot.command('anime', async (ctx) => {
     try {
-        const username = ctx.from.username;
-        if (!username) {
-            ctx.reply('You need to set a username to use this command.');
-            return;
-        }
-
-        
-        const { count, expireAt } = await getImageCount(username);
-        if (count >= 3 && new Date(expireAt) > new Date()) {
-            const remainingTime = Math.ceil((new Date(expireAt) - new Date()) / (1000 * 60 * 60)); // Convert milliseconds to hours
-            ctx.reply(`You have reached the limit of 3 images per day. Please try again after ${remainingTime} hours.`);
-            return;
-        }
-
         const prompt = ctx.message.text.split(' ').slice(1).join(' ');
         if (!prompt) {
             ctx.reply('Please provide a prompt.');
             return;
         }
 
-        
-        const magicMessage = await ctx.reply('Making the magic happen ✨');
-
-        const inputData = { prompt };
-        const imageBlob = await query(inputData);
+        const imageBlob = await query({ prompt });
         const imageUrl = await uploadToImgBB(imageBlob);
 
-        
-        await ctx.telegram.editMessageText(ctx.chat.id, magicMessage.message_id, null, 'Image ready! ✨');
-        await ctx.telegram.sendPhoto(ctx.chat.id, { url: imageUrl });
-
-        
-        await saveImageCount(username);
+        await ctx.replyWithPhoto({ url: imageUrl });
     } catch (error) {
         console.error("Error:", error.message);
         ctx.reply('Internal Server Error');
     }
 });
+
+bot.launch();
 
 bot.command('version', async (ctx) => {
     try {

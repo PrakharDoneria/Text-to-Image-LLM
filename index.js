@@ -291,20 +291,6 @@ bot.on('message', async (ctx) => {
     }
 });
 
-bot.on('message_delete', async (ctx) => {
-    try {
-        const deletedMessage = ctx.update.message;
-        if (deletedMessage && deletedMessage.text === 'message_deleted') {
-            await ctx.reply(`Download Android app: https://galaxy.store/llm
-                            OR
-                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
-                            Try the web version: https://verbo-visions-web.vercel.app/`);
-        }
-    } catch (error) {
-        handleError(error);
-    }
-});
-
 bot.command('video', async (ctx) => {
     try {
         const username = ctx.from.username;
@@ -401,6 +387,19 @@ bot.command('version', async (ctx) => {
     }
 });
 
+bot.on('message_delete', async (ctx) => {
+    try {
+        const deletedMessage = ctx.update.message;
+        if (deletedMessage && deletedMessage.text === 'message_deleted') {
+            await ctx.reply(`Download Android app: https://galaxy.store/llm
+                            OR
+                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
+                            Try the web version: https://verbo-visions-web.vercel.app/`);
+        }
+    } catch (error) {
+        handleError(error);
+    }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

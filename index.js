@@ -7,9 +7,6 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import express from 'express';
 import { randomBytes } from 'crypto';
-import { client } from "@gradio/client";
-import axios from 'axios';
-import FormData from 'form-data';
 
 dotenv.config();
 
@@ -51,7 +48,7 @@ const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 const app = express();
 
 app.get('/', (req, res) => {
-    res.send('Server is up and running!');
+    res.send('Jinda hu');
 });
 
 app.use((err, req, res, next) => {
@@ -68,84 +65,98 @@ async function asyncMiddleware(fn) {
     };
 }
 
-async function query(data) {
+async function getProLLMResponse(prompt) {
     try {
-        const response = await fetch(
-            "https://api-inference.huggingface.co/models/cagliostrolab/animagine-xl-3.1",
-            {
-                headers: { Authorization: `Bearer ${process.env.HUGGING_FACE_API_KEY}`, "Content-Type": "application/json" },
-                method: "POST",
-                body: JSON.stringify(data),
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch data from Hugging Face API: ${response.status} - ${response.statusText}`);
-        }
-
-        const result = await response.blob();
-        return result;
-    } catch (error) {
-        throw new Error(`Error fetching data from Hugging Face API: ${error.message}`);
-    }
-}
-
-async function uploadToImgBB(imageBlob) {
-    try {
-        const formData = new FormData();
-        formData.append('image', imageBlob, 'image.jpg');
-        formData.append('expiration', 'never');
-
-        const response = await axios.post('https://api.imgbb.com/1/upload', formData, {
+        const seedBytes = randomBytes(4);
+        const seed = seedBytes.readUInt32BE();
+        const data = {
+            width: 1024,
+            height: 1024,
+            seed: seed,
+            num_images: 1,
+            modelType: process.env.MODEL_TYPE,
+            sampler: 9,
+            cfg_scale: 3,
+            guidance_scale: 3,
+            strength: 1.7,
+            steps: 30,
+            high_noise_frac: 1,
+            negativePrompt: 'ugly, deformed, noisy, blurry, distorted, out of focus, bad anatomy, extra limbs, poorly drawn face, poorly drawn hands, missing fingers',
+            prompt: prompt,
+            hide: false,
+            isPrivate: false,
+            batchId: '0yU1CQbVkr',
+            generateVariants: false,
+            initImageFromPlayground: false,
+            statusUUID: '8c057d08-00f7-4ad6-903e-e10a2bb81d07'
+        };
+        const response = await fetch(process.env.BACKEND_URL, {
+            method: 'POST',
             headers: {
-                'Content-Type': 'multipart/form-data'
+                'Content-Type': 'application/json',
+                'Cookie': process.env.COOKIES
             },
-            params: {
-                key: process.env.IMGBB_API_KEY
-            }
+            body: JSON.stringify(data)
         });
+        const json = await response.json();
+        const imageUrl = `https://images.playground.com/${json.images[0].imageKey}.jpeg`;
+        const imageResponse = await fetch(imageUrl);
+        const buffer = Buffer.from(await imageResponse.arrayBuffer());
 
-        if (!response.data || !response.data.data || !response.data.data.url) {
-            throw new Error("Failed to upload image to imgBB.");
-        }
-
-        return response.data.data.url;
+        const tempFilePath = join(tmpdir(), `${Date.now()}.jpeg`);
+        await fsPromises.writeFile(tempFilePath, buffer);
+        return tempFilePath;
     } catch (error) {
-        throw new Error(`Error uploading image to imgBB: ${error.message}`);
+        handleError(error);
+        throw error;
     }
 }
 
-bot.command('anime', async (ctx) => {
+async function checkUsernameInDatabase(username) {
     try {
-        const prompt = ctx.message.text.split(' ').slice(1).join(' ');
-        if (!prompt) {
-            ctx.reply('Please provide a prompt.');
-            return;
-        }
-
-        const imageBlob = await query({ prompt });
-        const imageUrl = await uploadToImgBB(imageBlob);
-
-        await ctx.replyWithPhoto({ url: imageUrl });
+        const user = await Username.findOne({ username });
+        return !!user;
     } catch (error) {
-        console.error("Error:", error.message);
-        ctx.reply('Internal Server Error');
+        handleError(error);
+        return false;
     }
-});
+}
+
+async function getImageCount(username) {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const image = await Image.findOne({ username, date: today });
+        return image ? { count: image.count, expireAt: image.expireAt } : { count: 0, expireAt: null };
+    } catch (error) {
+        handleError(error);
+        return { count: 0, expireAt: null };
+    }
+}
+
+async function saveImageCount(username) {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        await Image.findOneAndUpdate({ username, date: today }, { $inc: { count: 1 } }, { upsert: true });
+    } catch (error) {
+        handleError(error);
+    }
+}
 
 bot.command('myData', async (ctx) => {
     try {
-        const username = ctx.from.username;
+        const username = ctx.from.username; // Get the username of the user who sent the command
         if (!username) {
             ctx.reply('You need to set a username to use this command.');
             return;
         }
 
-        const { count, expireAt } = await getImageCount(username);
+        const { count, expireAt } = await getImageCount(username); // Get image count and expiration time for the current user
         const lastImageTime = expireAt ? expireAt.toLocaleTimeString() : 'N/A';
 
+        // Format user data
         const userData = `================\nUsername: ${username}\nTotal images (today): ${count}\nLast image: ${lastImageTime}\n================\n`;
 
+        // Reply with the formatted user data
         await ctx.reply(userData);
     } catch (error) {
         handleError(error);
@@ -153,32 +164,37 @@ bot.command('myData', async (ctx) => {
     }
 });
 
+
 bot.command('showDB', async (ctx) => {
     try {
-        const users = await Username.find({});
-        let replyMessage = '';
+        const users = await Username.find({}); // Fetch all users
+        let replyMessage = ''; // Initialize the reply message
 
         if (users.length === 0) {
             ctx.reply('No users found.');
             return;
         }
 
+        // Iterate through each user
         for (const user of users) {
             const { username } = user;
-            const { count, expireAt } = await getImageCount(username);
+            const { count, expireAt } = await getImageCount(username); // Get image count and expiration time
             const lastImageTime = expireAt ? expireAt.toLocaleTimeString() : 'N/A';
 
+            // Format user data
             const userData = `================\nUsername: ${username}\nTotal images (today): ${count}\nLast image: ${lastImageTime}\n================\n`;
 
-            replyMessage += userData;
+            replyMessage += userData; // Append user data to the reply message
         }
 
+        // Reply with the formatted user data as a single message
         await ctx.reply(replyMessage);
     } catch (error) {
         handleError(error);
         ctx.reply('An error occurred while fetching user data.');
     }
 });
+
 
 bot.command('imagine', async (ctx) => {
     try {
@@ -197,7 +213,7 @@ bot.command('imagine', async (ctx) => {
         const isUsernameInDatabase = await checkUsernameInDatabase(username);
         const { count, expireAt } = await getImageCount(username);
         if (!isUsernameInDatabase && count >= 3 && new Date(expireAt) > new Date()) {
-            const remainingTime = Math.ceil((new Date(expireAt) - new Date()) / (1000 * 60 * 60));
+            const remainingTime = Math.ceil((new Date(expireAt) - new Date()) / (1000 * 60 * 60)); // Convert milliseconds to hours
             ctx.reply(`You have reached the limit of 3 images per day. Please try again after ${remainingTime} hours, Or send /donate to continue using the Bot.`);
             return;
         }
@@ -207,12 +223,16 @@ bot.command('imagine', async (ctx) => {
         const imageFilePath = await getProLLMResponse(prompt);
         await ctx.telegram.sendChatAction(ctx.chat.id, 'upload_photo');
 
+        // Adding caption after sending the image
         await ctx.replyWithPhoto({ source: await fsPromises.readFile(imageFilePath) }, {
             caption: "Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\tWebsite : https://verbo-visions-web.vercel.app/"
         });
 
         await ctx.telegram.deleteMessage(ctx.chat.id, message.message_id);
         await saveImageCount(username);
+
+        // Adding caption after sending the image
+        //await ctx.reply(`Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\tWebsite : https://verbo-visions-web.vercel.app/`);
     } catch (error) {
         handleError(error);
         const errorMessage = `An error occurred while processing your request:\n\`\`\`javascript\n${error}\n\`\`\``;
@@ -268,58 +288,17 @@ bot.command('id', (ctx) => {
     }
 });
 
-bot.command('video', async (ctx) => {
+bot.on('message', async (ctx) => {
     try {
-        const username = ctx.from.username;
-        if (!username) {
-            ctx.reply('You need to set a username to use this command.');
-            return;
+        if (ctx.message.text === 'message_deleted') {
+            // Resend the message
+            await ctx.reply(`Download Android app: https://galaxy.store/llm
+                            OR
+                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
+                            Try the web version: https://verbo-visions-web.vercel.app/`);
         }
-
-        const isUsernameInDatabase = await checkUsernameInDatabase(username);
-        const { count, expireAt } = await getImageCount(username);
-        if (!isUsernameInDatabase && count >= 3 && new Date(expireAt) > new Date()) {
-            const remainingTime = Math.ceil((new Date(expireAt) - new Date()) / (1000 * 60 * 60));
-            ctx.reply(`You have reached the limit of 3 images per day. Please try again after ${remainingTime} hours, Or send /donate to continue using the Bot.`);
-            return;
-        }
-
-        const message = await ctx.reply('Making the video...');
-
-        const uploadedImage = ctx.message.photo[0].file_id;
-        const app = await client("doevent/AnimateLCM-SVD");
-        const result = await app.predict("/video", [
-            uploadedImage,
-            0,
-            true,
-            1,
-            5,
-            1,
-            1.5,
-            576,
-            320,
-            20,
-        ]);
-
-        const videoFilePath = result.data;
-        await ctx.telegram.sendChatAction(ctx.chat.id, 'upload_video');
-        await ctx.replyWithVideo({ source: videoFilePath }, { caption: "Generated video" });
-
-        await ctx.telegram.deleteMessage(ctx.chat.id, message.message_id);
-        await saveImageCount(username);
     } catch (error) {
         handleError(error);
-        const errorMessage = `An error occurred while processing your request:\n\`\`\`javascript\n${error}\n\`\`\``;
-        ctx.reply(errorMessage);
-    }
-});
-
-bot.command('version', async (ctx) => {
-    try {
-        await ctx.reply('v2 Alpha');
-    } catch (error) {
-        console.error("Error:", error.message);
-        ctx.reply('Internal Server Error');
     }
 });
 
@@ -327,6 +306,7 @@ bot.on('message_delete', async (ctx) => {
     try {
         const deletedMessage = ctx.update.message;
         if (deletedMessage && deletedMessage.text === 'message_deleted') {
+            // Resend the message
             await ctx.reply(`Download Android app: https://galaxy.store/llm
                             OR
                             https://verbovisions-free-ai-image-maker.en.uptodown.com/android
@@ -337,30 +317,40 @@ bot.on('message_delete', async (ctx) => {
     }
 });
 
-bot.on('message', async (ctx) => {
+bot.on('inlineQuery', async (ctx) => {
     try {
-        if (ctx.message.text === 'message_deleted') {
-            await ctx.reply(`Download Android app: https://galaxy.store/llm
-                            OR
-                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
-                            Try the web version: https://verbo-visions-web.vercel.app/`);
+        const prompt = ctx.inlineQuery.query.trim();
+        if (!prompt) {
+            return;
         }
+
+        const imageFilePath = await getProLLMResponse(prompt);
+        const caption = "Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\tWebsite : https://verbo-visions-web.vercel.app/";
+
+        // Respond with the generated image
+        await ctx.telegram.sendPhoto(ctx.inlineQuery.from.id, { source: await fsPromises.readFile(imageFilePath) }, {
+            caption: caption,
+            reply_markup: { inline_keyboard: [[{ text: "Download Android app", url: "https://galaxy.store/llm" }], [{ text: "Uptodown", url: "https://verbovisions-free-ai-image-maker.en.uptodown.com/android" }], [{ text: "Website", url: "https://verbo-visions-web.vercel.app/" }]] }
+        });
     } catch (error) {
         handleError(error);
     }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });
 
 try {
     bot.launch();
 } catch (error) {
     if (error.description && error.description.includes('Forbidden: bot was blocked by the user')) {
+
         console.log('Bot was blocked by the user. Ignoring.');
     } else {
+        // Handle other errors
         console.error(error);
         handleError(error);
     }

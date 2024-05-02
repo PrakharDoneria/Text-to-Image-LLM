@@ -145,19 +145,17 @@ async function saveImageCount(username) {
 
 bot.command('myData', async (ctx) => {
     try {
-        const username = ctx.from.username; // Get the username of the user who sent the command
+        const username = ctx.from.username;
         if (!username) {
             ctx.reply('You need to set a username to use this command.');
             return;
         }
 
-        const { count, expireAt } = await getImageCount(username); // Get image count and expiration time for the current user
+        const { count, expireAt } = await getImageCount(username);
         const lastImageTime = expireAt ? expireAt.toLocaleTimeString() : 'N/A';
 
-        // Format user data
         const userData = `================\nUsername: ${username}\nTotal images (today): ${count}\nLast image: ${lastImageTime}\n================\n`;
 
-        // Reply with the formatted user data
         await ctx.reply(userData);
     } catch (error) {
         handleError(error);
@@ -165,37 +163,32 @@ bot.command('myData', async (ctx) => {
     }
 });
 
-
 bot.command('showDB', async (ctx) => {
     try {
-        const users = await Username.find({}); // Fetch all users
-        let replyMessage = ''; // Initialize the reply message
+        const users = await Username.find({});
+        let replyMessage = '';
 
         if (users.length === 0) {
             ctx.reply('No users found.');
             return;
         }
 
-        // Iterate through each user
         for (const user of users) {
             const { username } = user;
-            const { count, expireAt } = await getImageCount(username); // Get image count and expiration time
+            const { count, expireAt } = await getImageCount(username);
             const lastImageTime = expireAt ? expireAt.toLocaleTimeString() : 'N/A';
 
-            // Format user data
             const userData = `================\nUsername: ${username}\nTotal images (today): ${count}\nLast image: ${lastImageTime}\n================\n`;
 
-            replyMessage += userData; // Append user data to the reply message
+            replyMessage += userData;
         }
 
-        // Reply with the formatted user data as a single message
         await ctx.reply(replyMessage);
     } catch (error) {
         handleError(error);
         ctx.reply('An error occurred while fetching user data.');
     }
 });
-
 
 bot.command('imagine', async (ctx) => {
     try {
@@ -214,7 +207,7 @@ bot.command('imagine', async (ctx) => {
         const isUsernameInDatabase = await checkUsernameInDatabase(username);
         const { count, expireAt } = await getImageCount(username);
         if (!isUsernameInDatabase && count >= 3 && new Date(expireAt) > new Date()) {
-            const remainingTime = Math.ceil((new Date(expireAt) - new Date()) / (1000 * 60 * 60)); // Convert milliseconds to hours
+            const remainingTime = Math.ceil((new Date(expireAt) - new Date()) / (1000 * 60 * 60));
             ctx.reply(`You have reached the limit of 3 images per day. Please try again after ${remainingTime} hours, Or send /donate to continue using the Bot.`);
             return;
         }
@@ -224,16 +217,12 @@ bot.command('imagine', async (ctx) => {
         const imageFilePath = await getProLLMResponse(prompt);
         await ctx.telegram.sendChatAction(ctx.chat.id, 'upload_photo');
 
-        // Adding caption after sending the image
         await ctx.replyWithPhoto({ source: await fsPromises.readFile(imageFilePath) }, {
             caption: "Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\tWebsite : https://verbo-visions-web.vercel.app/"
         });
 
         await ctx.telegram.deleteMessage(ctx.chat.id, message.message_id);
         await saveImageCount(username);
-
-        // Adding caption after sending the image
-        //await ctx.reply(`Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\tWebsite : https://verbo-visions-web.vercel.app/`);
     } catch (error) {
         handleError(error);
         const errorMessage = `An error occurred while processing your request:\n\`\`\`javascript\n${error}\n\`\`\``;
@@ -292,7 +281,6 @@ bot.command('id', (ctx) => {
 bot.on('message', async (ctx) => {
     try {
         if (ctx.message.text === 'message_deleted') {
-            // Resend the message
             await ctx.reply(`Download Android app: https://galaxy.store/llm
                             OR
                             https://verbovisions-free-ai-image-maker.en.uptodown.com/android
@@ -307,32 +295,11 @@ bot.on('message_delete', async (ctx) => {
     try {
         const deletedMessage = ctx.update.message;
         if (deletedMessage && deletedMessage.text === 'message_deleted') {
-            // Resend the message
             await ctx.reply(`Download Android app: https://galaxy.store/llm
                             OR
                             https://verbovisions-free-ai-image-maker.en.uptodown.com/android
                             Try the web version: https://verbo-visions-web.vercel.app/`);
         }
-    } catch (error) {
-        handleError(error);
-    }
-});
-
-bot.on('inlineQuery', async (ctx) => {
-    try {
-        const prompt = ctx.inlineQuery.query.trim();
-        if (!prompt) {
-            return;
-        }
-
-        const imageFilePath = await getProLLMResponse(prompt);
-        const caption = "Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android)\nTry the web version:\n\tWebsite : https://verbo-visions-web.vercel.app/";
-
-        // Respond with the generated image
-        await ctx.telegram.sendPhoto(ctx.inlineQuery.from.id, { source: await fsPromises.readFile(imageFilePath) }, {
-            caption: caption,
-            reply_markup: { inline_keyboard: [[{ text: "Download Android app", url: "https://galaxy.store/llm" }], [{ text: "Uptodown", url: "https://verbovisions-free-ai-image-maker.en.uptodown.com/android" }], [{ text: "Website", url: "https://verbo-visions-web.vercel.app/" }]] }
-        });
     } catch (error) {
         handleError(error);
     }
@@ -384,20 +351,59 @@ bot.command('video', async (ctx) => {
     }
 });
 
+bot.command('anime', async (ctx) => {
+    try {
+        const username = ctx.from.username;
+        if (!username) {
+            ctx.reply('You need to set a username to use this command.');
+            return;
+        }
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+        
+        const { count, expireAt } = await getImageCount(username);
+        if (count >= 3 && new Date(expireAt) > new Date()) {
+            const remainingTime = Math.ceil((new Date(expireAt) - new Date()) / (1000 * 60 * 60)); // Convert milliseconds to hours
+            ctx.reply(`You have reached the limit of 3 images per day. Please try again after ${remainingTime} hours.`);
+            return;
+        }
+
+        const prompt = ctx.message.text.split(' ').slice(1).join(' ');
+        if (!prompt) {
+            ctx.reply('Please provide a prompt.');
+            return;
+        }
+
+        
+        const magicMessage = await ctx.reply('Making the magic happen ✨');
+
+        const inputData = { prompt };
+        const imageBlob = await query(inputData);
+        const imageUrl = await uploadToImgBB(imageBlob);
+
+        
+        await ctx.telegram.editMessageText(ctx.chat.id, magicMessage.message_id, null, 'Image ready! ✨');
+        await ctx.telegram.sendPhoto(ctx.chat.id, { url: imageUrl });
+
+        
+        await saveImageCount(username);
+    } catch (error) {
+        console.error("Error:", error.message);
+        ctx.reply('Internal Server Error');
+    }
+});
+
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
 
 try {
     bot.launch();
 } catch (error) {
     if (error.description && error.description.includes('Forbidden: bot was blocked by the user')) {
-        
         console.log('Bot was blocked by the user. Ignoring.');
     } else {
-        // Handle other errors
         console.error(error);
         handleError(error);
     }

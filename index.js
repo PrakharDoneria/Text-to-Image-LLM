@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import express from 'express';
 import { randomBytes } from 'crypto';
+import { client } from "@gradio/client";
 
 dotenv.config();
 
@@ -334,6 +335,56 @@ bot.on('inlineQuery', async (ctx) => {
         });
     } catch (error) {
         handleError(error);
+    }
+});
+
+bot.command('video', async (ctx) => {
+    try {
+        const username = ctx.from.username;
+        if (!username) {
+            ctx.reply('You need to set a username to use this command.');
+            return;
+        }
+
+        const isUsernameInDatabase = await checkUsernameInDatabase(username);
+        const { count, expireAt } = await getImageCount(username);
+        if (!isUsernameInDatabase && count >= 3 && new Date(expireAt) > new Date()) {
+            const remainingTime = Math.ceil((new Date(expireAt) - new Date()) / (1000 * 60 * 60));
+            ctx.reply(`You have reached the limit of 3 images per day. Please try again after ${remainingTime} hours, Or send /donate to continue using the Bot.`);
+            return;
+        }
+
+        const message = ctx.message;
+        if (!message.photo || message.photo.length === 0) {
+            ctx.reply('Please attach an image along with the /video command.');
+            return;
+        }
+
+        const uploadedImage = message.photo[0].file_id;
+        const app = await client("doevent/AnimateLCM-SVD");
+        const result = await app.predict("/video", [
+            uploadedImage,
+            0,
+            true,
+            1,
+            5,
+            1,
+            1.5,
+            576,
+            320,
+            20,
+        ]);
+
+        const videoFilePath = result.data;
+        await ctx.telegram.sendChatAction(ctx.chat.id, 'upload_video');
+        await ctx.replyWithVideo({ source: videoFilePath }, { caption: "Generated video" });
+
+        await ctx.telegram.deleteMessage(ctx.chat.id, message.message_id);
+        await saveImageCount(username);
+    } catch (error) {
+        handleError(error);
+        const errorMessage = `An error occurred while processing your request:\n\`\`\`javascript\n${error}\n\`\`\``;
+        ctx.reply(errorMessage);
     }
 });
 

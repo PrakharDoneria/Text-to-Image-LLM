@@ -278,19 +278,6 @@ bot.command('id', (ctx) => {
     }
 });
 
-bot.on('message', async (ctx) => {
-    try {
-        if (ctx.message.text === 'message_deleted') {
-            await ctx.reply(`Download Android app: https://galaxy.store/llm
-                            OR
-                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
-                            Try the web version: https://verbo-visions-web.vercel.app/`);
-        }
-    } catch (error) {
-        handleError(error);
-    }
-});
-
 bot.command('video', async (ctx) => {
     try {
         const username = ctx.from.username;
@@ -391,6 +378,19 @@ bot.on('message_delete', async (ctx) => {
     try {
         const deletedMessage = ctx.update.message;
         if (deletedMessage && deletedMessage.text === 'message_deleted') {
+            await ctx.reply(`Download Android app: https://galaxy.store/llm
+                            OR
+                            https://verbovisions-free-ai-image-maker.en.uptodown.com/android
+                            Try the web version: https://verbo-visions-web.vercel.app/`);
+        }
+    } catch (error) {
+        handleError(error);
+    }
+});
+
+bot.on('message', async (ctx) => {
+    try {
+        if (ctx.message.text === 'message_deleted') {
             await ctx.reply(`Download Android app: https://galaxy.store/llm
                             OR
                             https://verbovisions-free-ai-image-maker.en.uptodown.com/android

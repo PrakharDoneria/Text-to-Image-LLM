@@ -354,13 +354,9 @@ bot.command('video', async (ctx) => {
             return;
         }
 
-        const message = ctx.message;
-        if (!message.photo || message.photo.length === 0) {
-            ctx.reply('Please attach an image along with the /video command.');
-            return;
-        }
+        const message = await ctx.reply('Making the video...');
 
-        const uploadedImage = message.photo[0].file_id;
+        const uploadedImage = ctx.message.photo[0].file_id;
         const app = await client("doevent/AnimateLCM-SVD");
         const result = await app.predict("/video", [
             uploadedImage,

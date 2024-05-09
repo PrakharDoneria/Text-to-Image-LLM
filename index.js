@@ -166,32 +166,7 @@ bot.command('myData', async (ctx) => {
     }
 });
 
-bot.command('showDB', async (ctx) => {
-    try {
-        const users = await Username.find({});
-        let replyMessage = '';
 
-        if (users.length === 0) {
-            ctx.reply('No users found.');
-            return;
-        }
-
-        for (const user of users) {
-            const { username } = user;
-            const { count, expireAt } = await getImageCount(username);
-            const lastImageTime = expireAt ? expireAt.toLocaleTimeString() : 'N/A';
-
-            const userData = `================\nUsername: ${username}\nTotal images (today): ${count}\nLast image: ${lastImageTime}\n================\n`;
-
-            replyMessage += userData;
-        }
-
-        await ctx.reply(replyMessage);
-    } catch (error) {
-        handleError(error);
-        ctx.reply('An error occurred while fetching user data.');
-    }
-});
 
 bot.command('imagine', async (ctx) => {
     try {

@@ -208,6 +208,35 @@ bot.command('imagine', async (ctx) => {
     }
 });
 
+bot.command('search', async (ctx) => {
+    const query = ctx.message.text.split(' ').slice(1).join(' ');
+
+    if (!query) {
+        return ctx.reply('Please provide a search query.');
+    }
+
+    const url = `https://playground.com/_next/data/ba0kOy0FZsenBfbBIZHrR/search.json?q=${encodeURIComponent(query)}`;
+
+    try {
+        const response = await axios.get(url);
+        const data = response.data.pageProps.data;
+
+        if (data && data.length > 0) {
+            const firstResult = data[0];
+            const imageUrl = firstResult.url;
+
+            await ctx.replyWithPhoto({ url: imageUrl });
+
+            ctx.reply(`Title: ${firstResult.title || 'N/A'}\nPrompt: ${firstResult.prompt}\nUser: ${firstResult.user.displayName}`);
+        } else {
+            ctx.reply(`No results found for "${query}".`);
+        }
+    } catch (error) {
+        console.error('Error fetching search results:', error);
+        ctx.reply('Sorry, an error occurred while fetching the search results.');
+    }
+});
+
 bot.command('donate', async (ctx) => {
     try {
         await ctx.reply('Support us by donating at: https://html-editor-pro.vercel.app/donations/');

@@ -225,6 +225,7 @@ bot.command('search', async (ctx) => {
             const firstResult = data[0];
             const imageUrl = firstResult.url;
 
+            await ctx.sendChatAction('upload_photo');
             await ctx.replyWithPhoto({ url: imageUrl });
 
             ctx.reply(`Title: ${firstResult.title || 'N/A'}\nPrompt: ${firstResult.prompt}\nUser: ${firstResult.user.displayName}`);
@@ -351,7 +352,7 @@ bot.command('anime', async (ctx) => {
 
 bot.command('version', async (ctx) => {
     try {
-        await ctx.reply('v2 Alpha');
+        await ctx.reply('v2 - Completed');
     } catch (error) {
         console.error("Error:", error.message);
         ctx.reply('Internal Server Error');

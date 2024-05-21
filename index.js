@@ -215,7 +215,7 @@ bot.command('search', async (ctx) => {
         return ctx.reply('Please provide a search query.');
     }
 
-    const url = `https://playground.com/_next/data/ba0kOy0FZsenBfbBIZHrR/search.json?q=${encodeURIComponent(query)}`;
+    const url = `https://playground.com/_next/data/DKheFsybTy-HQ-Exsbzy9/search.json?q=${encodeURIComponent(query)}`;
 
     try {
         const response = await axios.get(url);

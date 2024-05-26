@@ -51,6 +51,18 @@ const Image = mongoose.model('Image', imageSchema);
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 const app = express();
 
+const headers2 = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Encoding": "gzip, deflate, br, zstd",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Origin": "https://magicstudio.com",
+    "Referer": "https://magicstudio.com/ai-art-generator/"
+};
+
+const captionText = `Download Android app:\n\tGalaxy Store : https://galaxy.store/llm \n\tOR\n\t Uptodown : https://verbovisions-free-ai-image-maker.en.uptodown.com/android`;
+
+
 app.get('/', (req, res) => {
     res.send('Jinda hu');
 });
@@ -215,7 +227,7 @@ bot.command('search', async (ctx) => {
         return ctx.reply('Please provide a search query.');
     }
 
-    const url = `https://playground.com/_next/data/DKheFsybTy-HQ-Exsbzy9/search.json?q=${encodeURIComponent(query)}`;
+    const url = `https://playground.com/_next/data/ba0kOy0FZsenBfbBIZHrR/search.json?q=${encodeURIComponent(query)}`;
 
     try {
         const response = await axios.get(url);
@@ -272,6 +284,42 @@ bot.command('add', async (ctx) => {
         ctx.reply('An error occurred while adding the username.');
     }
 });
+bot.command('imagineV2', async (ctx) => {
+    const prompt2 = ctx.message.text.replace('/imagineV2', '').trim();
+
+    if (!prompt2) {
+        return ctx.reply('Please provide a prompt. Usage: /imagineV2 {prompt}');
+    }
+
+    const data2 = {
+        prompt: prompt2,
+        output_format: "bytes",
+        user_profile_id: "null",
+        anonymous_user_id: "a584e30d-1996-4598-909f-70c7ac715dc1",
+        request_timestamp: "1715704441.446",
+        user_is_subscribed: "false",
+        client_id: "pSgX7WgjukXCBoYwDM8G8GLnRRkvAoJlqa5eAVvj95o"
+    };
+
+    const statusMessage = await ctx.reply('Making the magic happen...');
+
+    try {
+        const response2 = await axios.post(apiUrl2, data2, { headers: headers2, responseType: 'arraybuffer' });
+
+        if (response2.status === 200) {
+            await ctx.replyWithPhoto({ source: Buffer.from(response2.data) }, { caption: captionText });
+            await ctx.deleteMessage(statusMessage.message_id);
+        } else {
+            ctx.reply(`Failed to fetch image. Status code: ${response2.status}`);
+            await ctx.deleteMessage(statusMessage.message_id);
+        }
+    } catch (error2) {
+        console.error("Error fetching image:", error2);
+        ctx.reply('An error occurred while fetching the image.');
+        await ctx.deleteMessage(statusMessage.message_id);
+    }
+});
+
 
 bot.command('id', (ctx) => {
     try {
@@ -352,7 +400,7 @@ bot.command('anime', async (ctx) => {
 
 bot.command('version', async (ctx) => {
     try {
-        await ctx.reply('v2 - Completed');
+        await ctx.reply('v3 - Alpha');
     } catch (error) {
         console.error("Error:", error.message);
         ctx.reply('Internal Server Error');

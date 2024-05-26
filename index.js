@@ -51,6 +51,9 @@ const Image = mongoose.model('Image', imageSchema);
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 const app = express();
 
+const apiUrl2 = "https://ai-api.magicstudio.com/api/ai-art-generator";
+
+
 const headers2 = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
     "Accept": "application/json, text/plain, */*",
